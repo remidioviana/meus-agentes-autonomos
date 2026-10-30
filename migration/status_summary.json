@@ -1,0 +1,29 @@
+{
+  "as_of_utc": "2026-10-30",
+  "source_repository": "remidioviana/dubai50-mobile-ai-agents",
+  "source_ref": "stage176/dubai200-evidence-gated-delivery-register",
+  "source_readiness_git_blob": "87660ee2ffb9647f236a3a52099d7ff7869a0440",
+  "destination_repository": "remidioviana/meus-agentes-autonomos",
+  "total_agents": 200,
+  "by_portfolio": {
+    "Societal": 50,
+    "Personal": 50,
+    "Business": 50,
+    "Governmental": 50
+  },
+  "source_catalog_rows_preserved": 200,
+  "destination_native_android_sources_verified": 0,
+  "destination_native_ios_sources_verified": 0,
+  "destination_native_android_builds_verified": 0,
+  "destination_native_ios_builds_verified": 0,
+  "device_installations_verified": 0,
+  "real_agent_workflows_verified": 0,
+  "qualified_approvals_verified": 0,
+  "final_decks_50page_verified": 0,
+  "final_videos_60sec_verified": 0,
+  "deliverables_approved": 0,
+  "deliverable_target_total": 600,
+  "deadline": "2026-12-20",
+  "release_verdict": "NO_GO",
+  "note": "Legacy paths and old isolated tests are historical evidence only. All 200 source_path_audit statuses in the destination are LEGACY_REPO_PATH_NOT_IN_DESTINATION and source_migration_state NOT_MIGRATED. No private code is assumed present."
+}
