@@ -55,6 +55,50 @@ class MediaQATests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "page 50"):
             mod.inspect_pdf_reader(reader)
 
+    def test_pdf_rotated_to_portrait_rejected(self):
+        reader = Reader()
+        wrong = Page()
+        wrong.rotation = 90
+        reader.pages = reader.pages.copy()
+        reader.pages[49] = wrong
+        with self.assertRaisesRegex(ValueError, "page 50"):
+            mod.inspect_pdf_reader(reader)
+
+    def test_pdf_portrait_cropbox_rejected(self):
+        reader = Reader()
+        wrong = Page()
+        wrong.cropbox = type("Box", (), {"left": 0, "bottom": 0, "right": 540, "top": 540})()
+        reader.pages = reader.pages.copy()
+        reader.pages[49] = wrong
+        with self.assertRaisesRegex(ValueError, "page 50"):
+            mod.inspect_pdf_reader(reader)
+
+    def test_pdf_180_rotation_preserves_landscape(self):
+        reader = Reader()
+        rotated = Page()
+        rotated.rotation = 180
+        reader.pages = reader.pages.copy()
+        reader.pages[49] = rotated
+        self.assertEqual(mod.inspect_pdf_reader(reader)["pages"], 50)
+
+    def test_pdf_portrait_box_rotated_to_landscape_passes(self):
+        reader = Reader()
+        rotated = Page()
+        rotated.cropbox = type("Box", (), {"left": 0, "bottom": 0, "right": 540, "top": 960})()
+        rotated.rotation = 90
+        reader.pages = reader.pages.copy()
+        reader.pages[49] = rotated
+        self.assertEqual(mod.inspect_pdf_reader(reader)["pages"], 50)
+
+    def test_pdf_non_right_angle_rotation_rejected(self):
+        reader = Reader()
+        rotated = Page()
+        rotated.rotation = 45
+        reader.pages = reader.pages.copy()
+        reader.pages[49] = rotated
+        with self.assertRaisesRegex(ValueError, "unsupported rotation"):
+            mod.inspect_pdf_reader(reader)
+
     def test_pdf_encrypted_rejected(self):
         reader = Reader()
         reader.is_encrypted = True
