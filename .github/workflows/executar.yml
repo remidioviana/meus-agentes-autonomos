@@ -1,0 +1,21 @@
+name: Executar Agentes Autonomos
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  executar:
+    runs-on: self-hosted
+    steps:
+      - name: Baixar codigo no PC
+        uses: actions/checkout@v4
+
+      - name: Configurar o Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Iniciar os 200 Agentes
+        run: |
+          python agentes.py
