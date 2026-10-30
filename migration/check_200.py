@@ -11,8 +11,12 @@ import hashlib
 import json
 from collections import Counter
 from pathlib import Path
+import importlib.util
 
 BASE = Path(__file__).resolve().parent
+_CONTRACT_SPEC = importlib.util.spec_from_file_location("dubai200_release_contract", BASE / "release_contract.py")
+_CONTRACT = importlib.util.module_from_spec(_CONTRACT_SPEC)
+_CONTRACT_SPEC.loader.exec_module(_CONTRACT)
 CATEGORIES = ("AE", "PE", "BU", "GV")
 PORTFOLIOS = ("Societal", "Personal", "Business", "Governmental")
 LEGACY_BLOB = "87660ee2ffb9647f236a3a52099d7ff7869a0440"
@@ -29,6 +33,7 @@ def git_blob_sha(path: Path):
 def validate(rows, legacy_rows, summary):
     if len(rows) != 200 or len(legacy_rows) != 200:
         raise ValueError("Exactly 200 records required in both files")
+    _CONTRACT.verify_contract(rows, summary)
     ids = [row["id"] for row in rows]
     expected = [f"{prefix}-{index:02d}" for prefix in CATEGORIES for index in range(1, 51)]
     if ids != expected or [x["id"] for x in legacy_rows] != expected:
