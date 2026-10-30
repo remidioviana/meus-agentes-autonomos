@@ -3,10 +3,12 @@ on:
   push:
     branches: [ main ]
   workflow_dispatch:
+  schedule:
+    - cron: '*/15 * * * *'
 
 jobs:
   executar:
-    runs-on: ubuntu-latest  # Isso força o GitHub a rodar de graça nos servidores dele
+    runs-on: ubuntu-latest
     steps:
       - name: Baixar codigo
         uses: actions/checkout@v4
