@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import subprocess
 import sys
@@ -41,13 +42,21 @@ def inspect_pdf_reader(reader):
     if count != 50:
         raise ValueError(f"Expected exactly 50 PDF pages; found {count}")
     for i, page in enumerate(reader.pages, 1):
-        box = page.mediabox
+        # A 16:9 MediaBox can conceal a portrait CropBox or /Rotate=90.
+        # Validate the visible page geometry after the PDF viewer applies rotation.
+        box = getattr(page, "cropbox", None) or page.mediabox
         width = float(box.right) - float(box.left)
         height = float(box.top) - float(box.bottom)
-        if width <= 0 or height <= 0 or width <= height:
-            raise ValueError(f"PDF page {i}: invalid landscape dimensions")
+        rotation = int(getattr(page, "rotation", 0) or 0) % 360
+        if rotation not in (0, 90, 180, 270):
+            raise ValueError(f"PDF page {i}: unsupported rotation {rotation}")
+        if rotation in (90, 270):
+            width, height = height, width
+        if (not math.isfinite(width) or not math.isfinite(height)
+                or width <= 0 or height <= 0 or width <= height):
+            raise ValueError(f"PDF page {i}: invalid visible landscape dimensions")
         if abs(width / height - TARGET_ASPECT) > 0.005:
-            raise ValueError(f"PDF page {i}: aspect {width/height:.5f}, not 16:9")
+            raise ValueError(f"PDF page {i}: visible aspect {width/height:.5f}, not 16:9")
     return {"pages": count, "aspect": "16:9_LANDSCAPE", "all_pages_checked": True}
 
 
