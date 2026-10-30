@@ -109,6 +109,13 @@ class MediaQATests(unittest.TestCase):
     def test_valid_counted_frames_reported(self):
         self.assertEqual(mod.inspect_ffprobe(video())["decoded_frames"], 1800)
 
+    def test_ffprobe_actually_counts_decoded_frames(self):
+        from unittest.mock import Mock
+        completed = Mock(returncode=0, stdout=json.dumps(video()), stderr="")
+        with patch.object(mod.subprocess, "run", return_value=completed) as runner:
+            self.assertEqual(mod.inspect_video(Path("fictional.mp4"))["decoded_frames"], 1800)
+            self.assertIn("-count_frames", runner.call_args.args[0])
+
     def test_video_invalid_fps_rejected(self):
         with self.assertRaises(ValueError):
             mod.inspect_ffprobe(video(fps="0/0"))
