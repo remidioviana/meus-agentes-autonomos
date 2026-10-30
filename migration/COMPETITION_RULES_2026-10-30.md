@@ -1,0 +1,12 @@
+# Dubai AI Agents Championship — official-site checkpoint (2026-10-30)
+
+Official primary source: https://www.dubaichambers.com/en/web/dubai-chamber-of-digital-economy/create-ai-agents (page states last updated 2026-10-15). This is an evidence note, not an eligibility determination or completed registration.
+
+- **Official categories:** Best Societal AI Agent, Best Personal AI Agent, Best Business AI Agent, and **Best Youth AI Agent**. **Best Governmental AI Agent is not an advertised fourth award category.** Preserve all 50 GV missions with equal internal delivery priority for UAE public-sector employment/partnership positioning. Individual GV missions may warrant review under Business (officially covers public-sector uses) or Societal, subject to actual rules. Never claim a Governmental award exists.
+- **Official timeline:** registration and submission of agent, pitch deck and demo video in **January 2027**; Grand Final first week of **May 2027**. **2026-12-20 remains the user's earlier internal deadline**, not the organizer's published submission deadline. Recheck exact cutoff when submission opens.
+- **Originality conflict to resolve:** the official site says an agent **must not be copied or taken from an existing repository**. Wholesale import from the older private repository may jeopardize eligibility even if owned by the entrant. Do not assume that copying own code is eligible. Preserve provenance and obtain organizer clarification before submission; this note does not authorize publication of any private source.
+- **English** required for registration and submission. Individuals and teams permitted; **maximum team size six**. Multiple entries permitted. Youth category requires under-21 lead.
+- **Product:** idea/prototype/early MVP accepted at application; Grand Final requires live demonstration of a fully functional agent. Protect confidential, personal and organizational data.
+- The public page does **not** specify an exact 50-page PDF deck or 60-second video. These remain the user's separate **master production contract**, not a claimed official limit.
+
+Recheck official rules, actual submission form, category mapping, originality policy and privacy requirements before any entry. No outreach, registration, or submission was performed.
