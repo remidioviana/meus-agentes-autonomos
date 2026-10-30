@@ -1,0 +1,31 @@
+package ai.dubai.research
+
+fun main() {
+    fun review(channel: String = "APPLE", date: String = "2026-10-20", evidence: String = "NONE", consent: Boolean = true) =
+        IthbatCancellationMission.prepareLocalReview(listOf(channel, date, evidence), consent)
+    check(review().contains("REQUEST_RECORDED"))
+    check(review("GOOGLE_PLAY").contains("Google Play"))
+    check(review("DIRECT_MERCHANT").contains("no merchant-specific route"))
+    check(review(evidence = "RECEIPT:ABC-123").contains("RECEIPT_REPORTED"))
+    val checked = review(evidence = "RECEIPT:ABC-123|CHECKED:2026-10-25")
+    check(checked.contains("FOLLOW_UP_REPORTED"))
+    check(!checked.contains("ABC-123"))
+    check(checked.contains("NOT provider-verified"))
+    check(checked.contains("does NOT prove cancellation"))
+    check(review(consent = false).startsWith("BLOCKED"))
+    check(review(channel = "UNKNOWN").startsWith("BLOCKED"))
+    check(review(channel = "APPLE\nSECRET").startsWith("BLOCKED"))
+    check(review(date = "2026-02-30").startsWith("BLOCKED"))
+    check(review(date = "2024-02-29").contains("REQUEST_RECORDED"))
+    check(review(date = "2025-02-29").startsWith("BLOCKED"))
+    check(review(date = "1999-12-31").startsWith("BLOCKED"))
+    check(review(date = "2026-2-1").startsWith("BLOCKED"))
+    check(review(evidence = "RECEIPT:AB").startsWith("BLOCKED"))
+    check(review(evidence = "RECEIPT:ABC@123").startsWith("BLOCKED"))
+    check(review(evidence = "RECEIPT:ABC-123|CHECKED:2026-10-19").startsWith("BLOCKED"))
+    check(review(evidence = "RECEIPT:ABC-123|CHECKED:2026-02-30").startsWith("BLOCKED"))
+    check(review(evidence = "CHECKED:2026-10-25").startsWith("BLOCKED"))
+    check(review(evidence = "RECEIPT:ABC-123\nSECRET").startsWith("BLOCKED"))
+    check(IthbatCancellationMission.prepareLocalReview(listOf("APPLE", "2026-10-20"), true).startsWith("BLOCKED"))
+    println("PASS Kotlin PE-02: 23 assertions")
+}
