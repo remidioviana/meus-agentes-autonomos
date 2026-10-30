@@ -29,7 +29,8 @@ class Reader:
 
 def video(duration="60.0", fps="30/1", frames="1800", audio=True):
     streams = [{"codec_type": "video", "width": 1920, "height": 1080,
-                "avg_frame_rate": fps, "duration": duration, "nb_frames": frames}]
+                "avg_frame_rate": fps, "duration": duration, "nb_frames": frames,
+                "nb_read_frames": frames}]
     if audio:
         streams.append({"codec_type": "audio", "duration": duration})
     return {"format": {"duration": duration}, "streams": streams}
@@ -74,6 +75,39 @@ class MediaQATests(unittest.TestCase):
     def test_video_frame_count_mismatch_rejected(self):
         with self.assertRaises(ValueError):
             mod.inspect_ffprobe(video(frames="1700"))
+
+    def test_video_missing_decoded_frame_count_rejected(self):
+        bad = video()
+        bad["streams"][0].pop("nb_read_frames")
+        with self.assertRaisesRegex(ValueError, "Decoded frame count unavailable"):
+            mod.inspect_ffprobe(bad)
+
+    def test_video_one_frame_despite_60s_container_rejected(self):
+        bad = video()
+        bad["streams"][0]["nb_read_frames"] = "1"
+        with self.assertRaisesRegex(ValueError, "Decoded frame count"):
+            mod.inspect_ffprobe(bad)
+
+    def test_video_missing_stream_duration_rejected(self):
+        bad = video()
+        bad["streams"][0].pop("duration")
+        with self.assertRaisesRegex(ValueError, "Video stream duration unavailable"):
+            mod.inspect_ffprobe(bad)
+
+    def test_audio_missing_stream_duration_rejected(self):
+        bad = video()
+        bad["streams"][1].pop("duration")
+        with self.assertRaisesRegex(ValueError, "Audio stream duration unavailable"):
+            mod.inspect_ffprobe(bad)
+
+    def test_declared_and_decoded_frames_disagree_rejected(self):
+        bad = video()
+        bad["streams"][0]["nb_frames"] = "1799"
+        with self.assertRaisesRegex(ValueError, "Declared and decoded"):
+            mod.inspect_ffprobe(bad)
+
+    def test_valid_counted_frames_reported(self):
+        self.assertEqual(mod.inspect_ffprobe(video())["decoded_frames"], 1800)
 
     def test_video_invalid_fps_rejected(self):
         with self.assertRaises(ValueError):
