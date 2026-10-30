@@ -29,7 +29,8 @@ class Reader:
 
 def video(duration="60.0", fps="30/1", frames="1800", audio=True):
     streams = [{"codec_type": "video", "width": 1920, "height": 1080,
-                "avg_frame_rate": fps, "duration": duration, "nb_frames": frames}]
+                "avg_frame_rate": fps, "duration": duration, "nb_frames": frames,
+                "nb_read_frames": frames}]
     if audio:
         streams.append({"codec_type": "audio", "duration": duration})
     return {"format": {"duration": duration}, "streams": streams}
@@ -54,6 +55,50 @@ class MediaQATests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "page 50"):
             mod.inspect_pdf_reader(reader)
 
+    def test_pdf_rotated_to_portrait_rejected(self):
+        reader = Reader()
+        wrong = Page()
+        wrong.rotation = 90
+        reader.pages = reader.pages.copy()
+        reader.pages[49] = wrong
+        with self.assertRaisesRegex(ValueError, "page 50"):
+            mod.inspect_pdf_reader(reader)
+
+    def test_pdf_portrait_cropbox_rejected(self):
+        reader = Reader()
+        wrong = Page()
+        wrong.cropbox = type("Box", (), {"left": 0, "bottom": 0, "right": 540, "top": 540})()
+        reader.pages = reader.pages.copy()
+        reader.pages[49] = wrong
+        with self.assertRaisesRegex(ValueError, "page 50"):
+            mod.inspect_pdf_reader(reader)
+
+    def test_pdf_180_rotation_preserves_landscape(self):
+        reader = Reader()
+        rotated = Page()
+        rotated.rotation = 180
+        reader.pages = reader.pages.copy()
+        reader.pages[49] = rotated
+        self.assertEqual(mod.inspect_pdf_reader(reader)["pages"], 50)
+
+    def test_pdf_portrait_box_rotated_to_landscape_passes(self):
+        reader = Reader()
+        rotated = Page()
+        rotated.cropbox = type("Box", (), {"left": 0, "bottom": 0, "right": 540, "top": 960})()
+        rotated.rotation = 90
+        reader.pages = reader.pages.copy()
+        reader.pages[49] = rotated
+        self.assertEqual(mod.inspect_pdf_reader(reader)["pages"], 50)
+
+    def test_pdf_non_right_angle_rotation_rejected(self):
+        reader = Reader()
+        rotated = Page()
+        rotated.rotation = 45
+        reader.pages = reader.pages.copy()
+        reader.pages[49] = rotated
+        with self.assertRaisesRegex(ValueError, "unsupported rotation"):
+            mod.inspect_pdf_reader(reader)
+
     def test_pdf_encrypted_rejected(self):
         reader = Reader()
         reader.is_encrypted = True
@@ -74,6 +119,46 @@ class MediaQATests(unittest.TestCase):
     def test_video_frame_count_mismatch_rejected(self):
         with self.assertRaises(ValueError):
             mod.inspect_ffprobe(video(frames="1700"))
+
+    def test_video_missing_decoded_frame_count_rejected(self):
+        bad = video()
+        bad["streams"][0].pop("nb_read_frames")
+        with self.assertRaisesRegex(ValueError, "Decoded frame count unavailable"):
+            mod.inspect_ffprobe(bad)
+
+    def test_video_one_frame_despite_60s_container_rejected(self):
+        bad = video()
+        bad["streams"][0]["nb_read_frames"] = "1"
+        with self.assertRaisesRegex(ValueError, "Decoded frame count"):
+            mod.inspect_ffprobe(bad)
+
+    def test_video_missing_stream_duration_rejected(self):
+        bad = video()
+        bad["streams"][0].pop("duration")
+        with self.assertRaisesRegex(ValueError, "Video stream duration unavailable"):
+            mod.inspect_ffprobe(bad)
+
+    def test_audio_missing_stream_duration_rejected(self):
+        bad = video()
+        bad["streams"][1].pop("duration")
+        with self.assertRaisesRegex(ValueError, "Audio stream duration unavailable"):
+            mod.inspect_ffprobe(bad)
+
+    def test_declared_and_decoded_frames_disagree_rejected(self):
+        bad = video()
+        bad["streams"][0]["nb_frames"] = "1799"
+        with self.assertRaisesRegex(ValueError, "Declared and decoded"):
+            mod.inspect_ffprobe(bad)
+
+    def test_valid_counted_frames_reported(self):
+        self.assertEqual(mod.inspect_ffprobe(video())["decoded_frames"], 1800)
+
+    def test_ffprobe_actually_counts_decoded_frames(self):
+        from unittest.mock import Mock
+        completed = Mock(returncode=0, stdout=json.dumps(video()), stderr="")
+        with patch.object(mod.subprocess, "run", return_value=completed) as runner:
+            self.assertEqual(mod.inspect_video(Path("fictional.mp4"))["decoded_frames"], 1800)
+            self.assertIn("-count_frames", runner.call_args.args[0])
 
     def test_video_invalid_fps_rejected(self):
         with self.assertRaises(ValueError):

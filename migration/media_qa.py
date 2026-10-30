@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import subprocess
 import sys
@@ -41,13 +42,21 @@ def inspect_pdf_reader(reader):
     if count != 50:
         raise ValueError(f"Expected exactly 50 PDF pages; found {count}")
     for i, page in enumerate(reader.pages, 1):
-        box = page.mediabox
+        # A 16:9 MediaBox can conceal a portrait CropBox or /Rotate=90.
+        # Validate the visible page geometry after the PDF viewer applies rotation.
+        box = getattr(page, "cropbox", None) or page.mediabox
         width = float(box.right) - float(box.left)
         height = float(box.top) - float(box.bottom)
-        if width <= 0 or height <= 0 or width <= height:
-            raise ValueError(f"PDF page {i}: invalid landscape dimensions")
+        rotation = int(getattr(page, "rotation", 0) or 0) % 360
+        if rotation not in (0, 90, 180, 270):
+            raise ValueError(f"PDF page {i}: unsupported rotation {rotation}")
+        if rotation in (90, 270):
+            width, height = height, width
+        if (not math.isfinite(width) or not math.isfinite(height)
+                or width <= 0 or height <= 0 or width <= height):
+            raise ValueError(f"PDF page {i}: invalid visible landscape dimensions")
         if abs(width / height - TARGET_ASPECT) > 0.005:
-            raise ValueError(f"PDF page {i}: aspect {width/height:.5f}, not 16:9")
+            raise ValueError(f"PDF page {i}: visible aspect {width/height:.5f}, not 16:9")
     return {"pages": count, "aspect": "16:9_LANDSCAPE", "all_pages_checked": True}
 
 
@@ -88,32 +97,44 @@ def inspect_ffprobe(data):
     container_duration = _duration((data.get("format") or {}).get("duration"), "Container")
     if abs(container_duration - 60.0) > tolerance:
         raise ValueError(f"Container duration {container_duration:.5f}s differs from 60s")
-    if video.get("duration") not in (None, "N/A"):
-        video_duration = _duration(video["duration"], "Video stream")
-        if abs(video_duration - 60.0) > tolerance:
-            raise ValueError(f"Video stream duration {video_duration:.5f}s differs from 60s")
-    else:
-        video_duration = None
+    # A 60-second container can hide a one-frame video or truncated audio.
+    # Require measured stream durations and frames actually counted by ffprobe.
+    if video.get("duration") in (None, "N/A"):
+        raise ValueError("Video stream duration unavailable; cannot verify 60 seconds")
+    video_duration = _duration(video["duration"], "Video stream")
+    if abs(video_duration - 60.0) > tolerance:
+        raise ValueError(f"Video stream duration {video_duration:.5f}s differs from 60s")
+    raw_frames = video.get("nb_read_frames")
+    if raw_frames in (None, "N/A"):
+        raise ValueError("Decoded frame count unavailable; rerun ffprobe with -count_frames")
+    try:
+        counted_frames = int(raw_frames)
+    except (ValueError, TypeError):
+        raise ValueError("Invalid decoded frame count") from None
+    if counted_frames <= 0 or abs(counted_frames / fps - 60.0) > tolerance:
+        raise ValueError("Decoded frame count does not correspond to 60 seconds")
     if video.get("nb_frames") not in (None, "N/A"):
         try:
-            count = int(video["nb_frames"])
+            declared_frames = int(video["nb_frames"])
         except (ValueError, TypeError):
-            raise ValueError("Invalid video frame count") from None
-        if abs(count / fps - 60.0) > tolerance:
-            raise ValueError("Frame count does not correspond to 60 seconds")
+            raise ValueError("Invalid declared frame count") from None
+        if declared_frames != counted_frames:
+            raise ValueError("Declared and decoded frame counts disagree")
     for a in audios:
-        if a.get("duration") not in (None, "N/A"):
-            if abs(_duration(a["duration"], "Audio stream") - 60.0) > 0.1:
-                raise ValueError("Audio stream duration differs from 60 seconds")
+        if a.get("duration") in (None, "N/A"):
+            raise ValueError("Audio stream duration unavailable; cannot verify 60 seconds")
+        if abs(_duration(a["duration"], "Audio stream") - 60.0) > 0.1:
+            raise ValueError("Audio stream duration differs from 60 seconds")
     return {"container_seconds": container_duration, "video_seconds": video_duration,
-            "fps": fps, "width": int(video["width"]), "height": int(video["height"]),
+            "fps": fps, "decoded_frames": counted_frames,
+            "width": int(video["width"]), "height": int(video["height"]),
             "audio_streams": len(audios), "duration_tolerance_seconds": tolerance}
 
 
 def inspect_video(path):
     try:
         proc = subprocess.run(
-            ["ffprobe", "-v", "error", "-show_format", "-show_streams", "-of", "json", str(path)],
+            ["ffprobe", "-v", "error", "-count_frames", "-show_format", "-show_streams", "-of", "json", str(path)],
             capture_output=True, text=True, timeout=30, check=False,
         )
     except FileNotFoundError as exc:
