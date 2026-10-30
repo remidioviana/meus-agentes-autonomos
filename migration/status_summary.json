@@ -25,5 +25,7 @@
   "deliverable_target_total": 600,
   "deadline": "2026-12-20",
   "release_verdict": "NO_GO",
-  "note": "Legacy paths and old isolated tests are historical evidence only. All 200 source_path_audit statuses in the destination are LEGACY_REPO_PATH_NOT_IN_DESTINATION and source_migration_state NOT_MIGRATED. No private code is assumed present."
+  "note": "W1 copied exact Git blob sources for four Kotlin/Swift offline domain engines across AE/PE/BU/GV. This is source migration ONLY, not full Android/iOS applications. All 200 native builds, device validation, and 600 final deliverables remain NO_GO. Historical test results were not rerun in destination.",
+  "isolated_domain_engine_source_pairs_migrated": 4,
+  "isolated_domain_engine_pairs_compiled_in_destination": 0
 }

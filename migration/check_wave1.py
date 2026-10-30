@@ -36,6 +36,19 @@ def verify():
         gitsha = hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest()
         if gitsha != row["origin_git_blob"]:
             raise ValueError("Git blob mismatch: " + str(path))
+    # The readiness register and W1 source-provenance manifest must agree.
+    with (ROOT / "migration/readiness_200.csv").open(newline="", encoding="utf-8") as fh:
+        readiness = list(csv.DictReader(fh))
+    if len(readiness) != 200:
+        raise ValueError("Readiness register cardinality drift")
+    migrated = {r["id"] for r in readiness if r["domain_engine_source_status"] != "NOT_MIGRATED"}
+    if migrated != {"AE-18", "PE-02", "BU-03", "GV-03"}:
+        raise ValueError("Readiness flags do not match W1 proof")
+    for row in readiness:
+        if row["release_verdict"] != "NO_GO":
+            raise ValueError("Unapproved W1 source promotion")
+        if row["id"] in migrated and row["individual_logic_test"] != "HISTORICAL_ISOLATED_EVIDENCE_NOT_RERUN":
+            raise ValueError("No native/check-out tests were rerun")
     for filename in ("main.kt", "main.swift", "run_offline.sh"):
         if not (ROOT / "Stage171_IndividualNativeAgents/tests/bu03" / filename).is_file():
             raise ValueError("Missing newly authored BU-03 test file: " + filename)

@@ -47,10 +47,18 @@ def validate(rows, legacy_rows, summary):
                 raise ValueError(f"{row['id']}: historic identity/mission/source changed: {field}")
         if row["source_origin_repository"] != ORIGINAL_REPO:
             raise ValueError("Unexpected source origin")
-        if row["source_migration_state"] != "NOT_MIGRATED":
+        imported = row["id"] in {"AE-18", "PE-02", "BU-03", "GV-03"}
+        expected_migration = "DOMAIN_ENGINE_ONLY_IMPORTED_UNCOMPILED" if imported else "NOT_MIGRATED"
+        if row["source_migration_state"] != expected_migration:
             raise ValueError("Unverified source migration promotion")
-        if row["source_path_audit"] != "LEGACY_REPO_PATH_NOT_IN_DESTINATION":
-            raise ValueError("Source path incorrectly reported as present")
+        expected_path = ("SOURCE_PATH_EXISTS_UNCOMPILED_NO_APP_TARGET"
+                         if row["id"] in {"PE-02", "BU-03", "GV-03"}
+                         else "LEGACY_REPO_PATH_NOT_IN_DESTINATION")
+        if row["source_path_audit"] != expected_path:
+            raise ValueError("Source path evidence mismatch")
+        expected_engine_status = "KOTLIN_SWIFT_BLOBS_VERIFIED_NOT_COMPILED" if imported else "NOT_MIGRATED"
+        if row.get("domain_engine_source_status") != expected_engine_status:
+            raise ValueError("Domain engine provenance promotion without W1 proof")
         if row["release_verdict"] != "NO_GO":
             raise ValueError("Unapproved release promotion")
         for key in ("android_native_build", "ios_native_build", "android_device_install",
@@ -94,7 +102,7 @@ def main():
     original = rows_from(legacy)
     summary = json.loads((BASE / "status_summary.json").read_text(encoding="utf-8"))
     validate(rows, original, summary)
-    print("PASS: 200 stable IDs, 50/category, history retained, 600 NO_GO gates; native migration unverified")
+    print("PASS: 200 stable IDs, 50/category, 4 domain-engine pairs copied but uncompiled; 600 NO_GO gates")
 
 if __name__ == "__main__":
     main()
