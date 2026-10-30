@@ -6,9 +6,9 @@ on:
 
 jobs:
   executar:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest  # Isso força o GitHub a rodar de graça nos servidores dele
     steps:
-      - name: Baixar codigo no PC
+      - name: Baixar codigo
         uses: actions/checkout@v4
 
       - name: Configurar o Python
